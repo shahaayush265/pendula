@@ -1,0 +1,1940 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pendula | Real-Time Predictive Tracker</title>
+    <style>
+      /* CSS Variables & Theming */
+      :root {
+        --bg-color: #f1f5f9;
+        --panel-bg: rgba(255, 255, 255, 0.75);
+        --panel-border: rgba(255, 255, 255, 0.4);
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --btn-default: #e2e8f0;
+        --btn-hover: #cbd5e1;
+        --btn-text: #334155;
+        --accent-blue: #3b82f6;
+        --accent-blue-hover: #2563eb;
+        --accent-red: #ef4444;
+        --accent-orange: #f97316;
+        --accent-purple: #8b5cf6;
+        --success-green: #059669;
+        --card-bg: #ffffff;
+        --graph-bg: #ffffff;
+        --grid-line: #e2e8f0;
+        --input-bg: #f8fafc;
+        --input-border: #cbd5e1;
+        --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        --shadow-lg: 0 20px 40px -5px rgba(0, 0, 0, 0.1);
+      }
+
+      [data-theme="dark"] {
+        --bg-color: #020617;
+        --panel-bg: rgba(15, 23, 42, 0.75);
+        --panel-border: rgba(255, 255, 255, 0.1);
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --btn-default: #1e293b;
+        --btn-hover: #334155;
+        --btn-text: #e2e8f0;
+        --card-bg: #0f172a;
+        --graph-bg: #0f172a;
+        --grid-line: #334155;
+        --input-bg: #020617;
+        --input-border: #334155;
+        --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 20px 40px -5px rgba(0, 0, 0, 0.4);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        transition:
+          background-color 0.4s ease,
+          color 0.4s ease;
+        cursor: crosshair;
+      }
+
+      #bg-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      #ui-panel {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        width: 480px;
+        max-height: calc(100vh - 48px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: var(--panel-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        padding: 24px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+        transition: all 0.4s ease;
+      }
+
+      #ui-panel::-webkit-scrollbar {
+        width: 6px;
+      }
+      #ui-panel::-webkit-scrollbar-track {
+        background: transparent;
+        margin: 10px 0;
+      }
+      #ui-panel::-webkit-scrollbar-thumb {
+        background: var(--panel-border);
+        border-radius: 10px;
+      }
+      #ui-panel::-webkit-scrollbar-thumb:hover {
+        background: var(--text-muted);
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-shrink: 0;
+      }
+      .header h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      .header-controls {
+        display: flex;
+        gap: 8px;
+      }
+      .icon-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-muted);
+        font-size: 1.2rem;
+        padding: 8px;
+        border-radius: 50%;
+        transition:
+          background 0.2s,
+          color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .icon-btn:hover {
+        background: var(--btn-default);
+        color: var(--text-main);
+      }
+
+      .section-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+      }
+
+      .tools-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px 12px;
+        margin-bottom: 20px;
+        flex-shrink: 0;
+      }
+      .tool-group {
+        display: flex;
+        gap: 6px;
+      }
+      .btn-small {
+        flex: 1;
+        padding: 8px 4px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: var(--btn-default);
+        color: var(--btn-text);
+        border: 1px solid transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+      }
+      .btn-small:hover:not(:disabled) {
+        background: var(--btn-hover);
+      }
+      .btn-small:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .settings-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+        flex-shrink: 0;
+        background: var(--card-bg);
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--panel-border);
+      }
+      .setting-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex: 1;
+        gap: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .setting-item input[type="number"] {
+        width: 48px;
+        padding: 6px;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 6px;
+        text-align: center;
+        font-family: monospace;
+        font-size: 1rem;
+        color: var(--text-main);
+      }
+      .setting-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--accent-blue);
+      }
+
+      .actions-row {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-shrink: 0;
+      }
+      .btn-primary {
+        width: 100%;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: 700;
+        background-color: var(--accent-blue);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+      .btn-primary:hover:not(:disabled) {
+        background-color: var(--accent-blue-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+      }
+      .btn-primary:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+      .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      .btn-recording {
+        background-color: var(--accent-red) !important;
+        animation: pulse 2s infinite;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+      }
+      .btn-counting {
+        background-color: #f59e0b !important;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+      }
+      .btn-replay {
+        background-color: var(--accent-purple) !important;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3) !important;
+        display: none;
+      }
+
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        }
+      }
+
+      /* Graph Legend */
+      .legend {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      .dot.blue {
+        background-color: var(--accent-blue);
+      }
+      .dot.orange {
+        background-color: var(--accent-orange);
+      }
+      .dot.red {
+        background-color: var(--accent-red);
+      }
+
+      #graph {
+        width: 100%;
+        height: 180px;
+        background: var(--graph-bg);
+        border-radius: 10px;
+        border: 1px solid var(--panel-border);
+        margin-bottom: 15px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+        flex-shrink: 0;
+      }
+      #results {
+        font-family: "SF Mono", ui-monospace, monospace;
+        font-size: 0.85rem;
+        background: var(--card-bg);
+        padding: 16px;
+        border-radius: 10px;
+        border: 1px solid var(--panel-border);
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        line-height: 1.5;
+        box-shadow: var(--shadow-sm);
+        flex-shrink: 0;
+      }
+      .score-highlight {
+        color: var(--success-green);
+        font-weight: 800;
+        font-size: 1.1em;
+      }
+      .score-orange {
+        color: var(--accent-orange);
+        font-weight: bold;
+      }
+      .cheat-alert {
+        color: var(--accent-red);
+        font-weight: 800;
+        font-size: 1.1em;
+        margin-bottom: 5px;
+      }
+
+      .toast {
+        position: absolute;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: var(--text-main);
+        color: var(--bg-color);
+        padding: 14px 28px;
+        border-radius: 30px;
+        z-index: 50;
+        font-weight: 600;
+        font-size: 1rem;
+        box-shadow: var(--shadow-lg);
+        pointer-events: none;
+        opacity: 0;
+        transition:
+          opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+          transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .toast.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* Modals & Smooth Animations */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        visibility: hidden;
+        opacity: 0;
+        transition:
+          opacity 0.3s ease,
+          visibility 0.3s ease;
+      }
+      .modal-overlay.active {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      .modal-content {
+        background: var(--bg-color);
+        width: 90%;
+        max-width: 800px;
+        max-height: 85vh;
+        border-radius: 20px;
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--panel-border);
+        transform: translateY(20px) scale(0.95);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .modal-overlay.active .modal-content {
+        transform: translateY(0) scale(1);
+      }
+
+      .modal-header {
+        padding: 24px;
+        border-bottom: 1px solid var(--grid-line);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .modal-header h3 {
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.8rem;
+        cursor: pointer;
+        color: var(--text-muted);
+        line-height: 1;
+      }
+      .close-btn:hover {
+        color: var(--accent-red);
+      }
+      .modal-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex: 1;
+        line-height: 1.6;
+      }
+      .modal-body p {
+        margin-top: 0;
+      }
+
+      .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 20px;
+      }
+      .motion-card {
+        background: var(--card-bg);
+        border: 1px solid var(--grid-line);
+        border-radius: 12px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        box-shadow: var(--shadow-sm);
+      }
+      .motion-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--accent-blue);
+      }
+      .card-date {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+      }
+      .card-score {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--success-green);
+        margin: 5px 0;
+      }
+      .card-stat {
+        font-size: 0.9rem;
+        color: var(--text-main);
+        margin-top: 4px;
+        font-weight: 500;
+        word-break: break-all;
+      }
+      .delete-card-btn {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: var(--btn-default);
+        color: var(--text-muted);
+        border: none;
+        border-radius: 6px;
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.2s;
+      }
+      .delete-card-btn:hover {
+        background: var(--accent-red);
+        color: white;
+      }
+      .empty-state {
+        text-align: center;
+        color: var(--text-muted);
+        padding: 60px 20px;
+        font-style: italic;
+        grid-column: 1 / -1;
+      }
+      .creator-title {
+        font-weight: 800;
+        font-size: 1.1rem;
+        color: var(--accent-blue);
+        margin-bottom: 5px;
+      }
+
+      .equation-box {
+        background: var(--input-bg);
+        border: 1px solid var(--grid-line);
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        font-family: monospace;
+        font-size: 1.1rem;
+        margin: 15px 0;
+        color: var(--text-main);
+      }
+
+      .cheat-explanation {
+        background: var(--input-bg);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid var(--accent-red);
+        margin-bottom: 20px;
+      }
+      .cheat-explanation h4 {
+        margin: 0 0 10px 0;
+        color: var(--accent-red);
+      }
+      .cheat-explanation ul {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 0.95rem;
+      }
+      .cheat-explanation li {
+        margin-bottom: 6px;
+      }
+
+      @media (max-width: 768px) {
+        #ui-panel {
+          top: auto;
+          bottom: 0;
+          right: 0;
+          width: 100%;
+          max-height: 85vh;
+          border-radius: 24px 24px 0 0;
+          padding: 20px;
+        }
+        .toast {
+          bottom: auto;
+          top: 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="bg-canvas"></canvas>
+    <div class="toast" id="instruction-toast">Ready</div>
+
+    <div id="ui-panel">
+      <div class="header">
+        <h2>Pendula</h2>
+        <div class="header-controls">
+          <button class="icon-btn" id="info-btn" title="About Pendula">
+            ℹ️
+          </button>
+          <button class="icon-btn" id="theme-toggle-btn" title="Toggle Theme">
+            🌙
+          </button>
+        </div>
+      </div>
+
+      <div class="tools-grid">
+        <div>
+          <div class="section-title">Library</div>
+          <div class="tool-group">
+            <button class="btn-small" id="save-local-btn" disabled>
+              💾 Save
+            </button>
+            <button class="btn-small" id="load-local-btn">📂 Open</button>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">Export</div>
+          <div class="tool-group">
+            <button class="btn-small" id="save-file-btn" disabled>
+              📥 Save
+            </button>
+            <button class="btn-small" id="load-file-btn">📤 Load</button>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">Showcase</div>
+          <div class="tool-group">
+            <button
+              class="btn-small"
+              id="creator-examples-btn"
+              style="width: 100%; color: var(--accent-blue)"
+            >
+              🌟 Tests
+            </button>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">Secrets</div>
+          <div class="tool-group">
+            <button
+              class="btn-small"
+              id="cheats-btn"
+              style="width: 100%; color: var(--accent-red)"
+            >
+              🕵️ Cheats
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div class="setting-item">
+          <label for="delay-input">Delay (s)</label>
+          <input type="number" id="delay-input" min="0" max="10" value="3" />
+        </div>
+        <div class="setting-item" style="justify-content: flex-end">
+          <label for="auto-stop">Auto-stop</label>
+          <input type="checkbox" id="auto-stop" checked />
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn-primary" id="record-btn">Start Recording</button>
+        <button class="btn-primary btn-replay" id="replay-btn">
+          ▶ Replay Motion
+        </button>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item">
+          <div class="dot blue"></div>
+          Actual
+        </div>
+        <div class="legend-item">
+          <div class="dot orange"></div>
+          Live Predict
+        </div>
+        <div class="legend-item">
+          <div class="dot red"></div>
+          Final Fit
+        </div>
+      </div>
+      <canvas id="graph" width="400" height="180"></canvas>
+      <div id="results">Awaiting input...</div>
+    </div>
+
+    <input
+      type="file"
+      id="file-uploader"
+      accept=".motion"
+      style="display: none"
+    />
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>About Pendula</h3>
+          <button
+            class="close-btn"
+            onclick="
+              document.getElementById('info-modal').classList.remove('active')
+            "
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>
+            <strong>Pendula</strong> is a real-time motion tracking and physics
+            visualization tool.
+          </p>
+          <p>
+            It captures your raw 2D mouse or stylus movements and automatically
+            determines your swing's primary angle using
+            <strong>Principal Component Analysis (PCA)</strong>.
+          </p>
+          <p>
+            Simultaneously, a live machine-learning optimization algorithm runs
+            in the background to fit your imperfect human motion to the ideal
+            mathematical equation for
+            <strong>Damped Simple Harmonic Motion</strong>:
+          </p>
+
+          <div class="equation-box">x(t) = A * e^(-γt) * cos(ωt + φ)</div>
+
+          <p><strong>How to interpret the tracker:</strong></p>
+          <ul style="margin-top: 0">
+            <li style="margin-bottom: 5px">
+              <strong
+                ><span style="color: var(--accent-blue)"
+                  >Blue Trace:</span
+                ></strong
+              >
+              The raw input data from your mouse/stylus.
+            </li>
+            <li style="margin-bottom: 5px">
+              <strong
+                ><span style="color: var(--accent-orange)"
+                  >Orange Trace:</span
+                ></strong
+              >
+              The Live Predictive model (calculating rapidly during your swing).
+            </li>
+            <li>
+              <strong
+                ><span style="color: var(--accent-red)"
+                  >Red Trace:</span
+                ></strong
+              >
+              The Final Post-Processed fit (calculated using rigorous simulated
+              annealing once the pen stops).
+            </li>
+          </ul>
+          <p>
+            Try placing your drawing tablet pen on its side and giving it a
+            gentle nudge. You will see its natural decay perfectly match the
+            math!
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standard Library Modal -->
+    <div id="library-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>My Library</h3>
+          <button
+            class="close-btn"
+            onclick="
+              document
+                .getElementById('library-modal')
+                .classList.remove('active')
+            "
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="cards-container" class="cards-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Creator Examples Modal -->
+    <div id="examples-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Creator Examples</h3>
+          <button
+            class="close-btn"
+            onclick="
+              document
+                .getElementById('examples-modal')
+                .classList.remove('active')
+            "
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-top: 0; color: var(--text-muted); font-size: 0.9rem">
+            <em
+              >Note: These load from the <code>/examples/</code> directory
+              relative to this HTML file.</em
+            >
+          </p>
+          <div id="examples-container" class="cards-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cheats Modal -->
+    <div id="cheats-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Known Cheats & Exploits</h3>
+          <button
+            class="close-btn"
+            onclick="
+              document.getElementById('cheats-modal').classList.remove('active')
+            "
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="cheat-explanation">
+            <h4>How to fool a math engine</h4>
+            <ul>
+              <li>
+                <strong>The Straight Line:</strong> If you draw a straight line,
+                the engine drops the Angular Frequency (ω) to 0, turning the SHM
+                equation into a pure exponential decay.
+              </li>
+              <li>
+                <strong>The Spiral:</strong> Pendula calculates 1D shadows of
+                your 2D motion. The 1D shadow of a shrinking circle is
+                mathematically identical to a damped sine wave.
+              </li>
+              <li>
+                <strong>The Figure-8:</strong> Just like a spiral, repetitive 2D
+                loops project a chaotic but highly periodic 1D shadow that can
+                trick the curve fitter.
+              </li>
+            </ul>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0">
+            Try the pre-loaded cheats below, or try to recreate them yourself
+            and watch the Anti-Cheat tripwire catch you!
+          </p>
+          <div id="cheats-container" class="cards-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Theme Management ---
+      const themeBtn = document.getElementById("theme-toggle-btn");
+
+      // 1. Detect System Preference
+      const systemPrefersDark =
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const defaultTheme = systemPrefersDark ? "dark" : "light";
+
+      // 2. Load from LocalStorage or fallback to System Default
+      let currentTheme = localStorage.getItem("pendula_theme") || defaultTheme;
+
+      document.documentElement.setAttribute("data-theme", currentTheme);
+      themeBtn.textContent = currentTheme === "light" ? "🌙" : "☀️";
+
+      // 3. Listen for System changes (if user hasn't forced a theme)
+      window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .addEventListener("change", (e) => {
+          if (!localStorage.getItem("pendula_theme")) {
+            currentTheme = e.matches ? "dark" : "light";
+            document.documentElement.setAttribute("data-theme", currentTheme);
+            themeBtn.textContent = currentTheme === "light" ? "🌙" : "☀️";
+            if (lastAnalysisData && !isReplaying)
+              renderResults(lastAnalysisData);
+          }
+        });
+
+      themeBtn.addEventListener("click", () => {
+        currentTheme = currentTheme === "light" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", currentTheme);
+        localStorage.setItem("pendula_theme", currentTheme);
+        themeBtn.textContent = currentTheme === "light" ? "🌙" : "☀️";
+        if (lastAnalysisData && !isReplaying) {
+          renderResults(lastAnalysisData);
+        }
+      });
+
+      function getThemeVar(name) {
+        return getComputedStyle(document.documentElement)
+          .getPropertyValue(name)
+          .trim();
+      }
+
+      // --- Core Application Logic ---
+      const bgCanvas = document.getElementById("bg-canvas");
+      const bgCtx = bgCanvas.getContext("2d");
+      const graphCanvas = document.getElementById("graph");
+      const graphCtx = graphCanvas.getContext("2d");
+
+      const recordBtn = document.getElementById("record-btn");
+      const replayBtn = document.getElementById("replay-btn");
+      const saveLocalBtn = document.getElementById("save-local-btn");
+      const loadLocalBtn = document.getElementById("load-local-btn");
+      const saveFileBtn = document.getElementById("save-file-btn");
+      const loadFileBtn = document.getElementById("load-file-btn");
+      const creatorBtn = document.getElementById("creator-examples-btn");
+      const infoBtn = document.getElementById("info-btn");
+      const cheatsBtn = document.getElementById("cheats-btn");
+      const fileUploader = document.getElementById("file-uploader");
+
+      const delayInput = document.getElementById("delay-input");
+      const autoStopCheckbox = document.getElementById("auto-stop");
+      const resultsDiv = document.getElementById("results");
+      const toast = document.getElementById("instruction-toast");
+
+      const libraryModal = document.getElementById("library-modal");
+      const cardsContainer = document.getElementById("cards-container");
+      const examplesModal = document.getElementById("examples-modal");
+      const examplesContainer = document.getElementById("examples-container");
+      const infoModal = document.getElementById("info-modal");
+      const cheatsModal = document.getElementById("cheats-modal");
+      const cheatsContainer = document.getElementById("cheats-container");
+
+      let isRecording = false;
+      let isCountingDown = false;
+      let isReplaying = false;
+      let countdownTimer = null;
+      let autoStopTimer = null;
+      let liveFitTimer = null;
+
+      let startTime = 0;
+      let lastMoveTime = 0;
+      let raw2DPoints = [];
+      let lastAnalysisData = null;
+
+      // Live Prediction State
+      let currentLiveParams = null;
+      let currentLiveTheta = 0;
+      let currentLiveMeanX = 0;
+      let currentLiveMeanY = 0;
+      let currentLiveScore = 0;
+
+      function showToast(msg, duration = 3000) {
+        toast.textContent = msg;
+        toast.classList.add("visible");
+        if (duration > 0)
+          setTimeout(() => toast.classList.remove("visible"), duration);
+      }
+      function hideToast() {
+        toast.classList.remove("visible");
+      }
+
+      function resizeCanvas() {
+        bgCanvas.width = window.innerWidth;
+        bgCanvas.height = window.innerHeight;
+        if (lastAnalysisData && !isReplaying && !isRecording)
+          drawStaticAxis(
+            lastAnalysisData.theta,
+            lastAnalysisData.meanX,
+            lastAnalysisData.meanY,
+          );
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      // --- Modals Logic ---
+      infoBtn.addEventListener("click", () =>
+        infoModal.classList.add("active"),
+      );
+      infoModal.addEventListener("click", (e) => {
+        if (e.target === infoModal) infoModal.classList.remove("active");
+      });
+
+      libraryModal.addEventListener("click", (e) => {
+        if (e.target === libraryModal) libraryModal.classList.remove("active");
+      });
+      examplesModal.addEventListener("click", (e) => {
+        if (e.target === examplesModal)
+          examplesModal.classList.remove("active");
+      });
+      cheatsModal.addEventListener("click", (e) => {
+        if (e.target === cheatsModal) cheatsModal.classList.remove("active");
+      });
+
+      // --- Creator Examples Logic (Static Array for GitHub Pages) ---
+      // ⚠️ ADD YOUR SHOWCASE FILES HERE:
+      const creatorTests = [
+        {
+          name: "Original 98% Test",
+          desc: "The foundational pristine roll",
+          file: "1.motion",
+        },
+        {
+          name: "The 99% Roll",
+          desc: "The perfectly tuned 99% fit",
+          file: "2.motion",
+        },
+        {
+          name: "Another good roll",
+          desc: "Something that feels okay",
+          file: "3.motion",
+        },
+      ];
+
+      creatorBtn.addEventListener("click", () => {
+        examplesContainer.innerHTML = "";
+        creatorTests.forEach((test) => {
+          const card = document.createElement("div");
+          card.className = "motion-card";
+          card.innerHTML = `
+                    <div class="creator-title">${test.name}</div>
+                    <div class="card-date">${test.desc}</div>
+                    <div class="card-stat" style="font-family: monospace;">📁 /examples/${test.file}</div>
+                `;
+          card.addEventListener("click", () => {
+            examplesModal.classList.remove("active");
+            showToast(`Fetching ${test.name}...`, 0);
+            fetch(`./examples/${test.file}`)
+              .then((r) => {
+                if (!r.ok) throw new Error();
+                return r.json();
+              })
+              .then((data) => {
+                if (!data.rawPoints) throw new Error();
+                lastAnalysisData = data;
+                renderResults(data);
+                enableSaveButtons();
+                showToast(`${test.name} Loaded!`, 3000);
+              })
+              .catch(() => {
+                alert(`Could not load /examples/${test.file}.`);
+                hideToast();
+              });
+          });
+          examplesContainer.appendChild(card);
+        });
+        examplesModal.classList.add("active");
+      });
+
+      // --- Known Cheats Logic ---
+      const knownCheats = [
+        {
+          name: "The Straight Line",
+          desc: "Pure exponential decay",
+          file: "cheat_line.motion",
+        },
+        {
+          name: "The Spiral",
+          desc: "The 1D shadow of a shrinking circle",
+          file: "cheat_spiral.motion",
+        },
+        {
+          name: "The Figure-8",
+          desc: "A chaotic 2D loop",
+          file: "cheat_fig8.motion",
+        },
+      ];
+
+      cheatsBtn.addEventListener("click", () => {
+        cheatsContainer.innerHTML = "";
+        knownCheats.forEach((cheat) => {
+          const card = document.createElement("div");
+          card.className = "motion-card";
+          card.innerHTML = `
+                    <div class="creator-title" style="color: var(--accent-red);">${cheat.name}</div>
+                    <div class="card-date">${cheat.desc}</div>
+                    <div class="card-stat" style="font-family: monospace;">📁 /examples/${cheat.file}</div>
+                `;
+          card.addEventListener("click", () => {
+            cheatsModal.classList.remove("active");
+            showToast(`Fetching ${cheat.name}...`, 0);
+            fetch(`./examples/${cheat.file}`)
+              .then((r) => {
+                if (!r.ok) throw new Error();
+                return r.json();
+              })
+              .then((data) => {
+                if (!data.rawPoints) throw new Error();
+                lastAnalysisData = data;
+                renderResults(data);
+                enableSaveButtons();
+                showToast(`${cheat.name} Loaded!`, 3000);
+              })
+              .catch(() => {
+                alert(`Could not load /examples/${cheat.file}.`);
+                hideToast();
+              });
+          });
+          cheatsContainer.appendChild(card);
+        });
+        cheatsModal.classList.add("active");
+      });
+
+      // --- Library Logic ---
+      function getLibrary() {
+        try {
+          return JSON.parse(
+            localStorage.getItem("pendula_motion_library") || "[]",
+          );
+        } catch (e) {
+          return [];
+        }
+      }
+      function saveToLibrary(data) {
+        const library = getLibrary();
+        const freq = (data.bestParams.omega / (2 * Math.PI)).toFixed(2);
+        library.unshift({
+          id: Date.now().toString(),
+          timestamp: new Date().toLocaleString(),
+          score: data.similarityScore,
+          freq: freq,
+          angle: data.angleDeg,
+          payload: data,
+        });
+        localStorage.setItem("pendula_motion_library", JSON.stringify(library));
+      }
+      function deleteFromLibrary(id) {
+        let library = getLibrary().filter((item) => item.id !== id);
+        localStorage.setItem("pendula_motion_library", JSON.stringify(library));
+        renderLibrary();
+      }
+      function enableSaveButtons() {
+        saveLocalBtn.disabled = false;
+        saveFileBtn.disabled = false;
+      }
+
+      saveLocalBtn.addEventListener("click", () => {
+        if (!lastAnalysisData) return;
+        saveToLibrary(lastAnalysisData);
+        showToast("Saved to Motion Library! 📚");
+      });
+      loadLocalBtn.addEventListener("click", () => {
+        renderLibrary();
+        libraryModal.classList.add("active");
+      });
+
+      function renderLibrary() {
+        const library = getLibrary();
+        cardsContainer.innerHTML = "";
+        if (library.length === 0) {
+          cardsContainer.innerHTML = `<div class="empty-state">No saved motions found. Record and save some!</div>`;
+          return;
+        }
+        library.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "motion-card";
+          card.innerHTML = `<button class="delete-card-btn" title="Delete">&times;</button><div class="card-date">${item.timestamp}</div><div class="card-score">${item.score}% Fit</div><div class="card-stat">Freq: ${item.freq} Hz</div><div class="card-stat">Angle: ${item.angle}°</div>`;
+          card.addEventListener("click", (e) => {
+            if (e.target.classList.contains("delete-card-btn")) return;
+            lastAnalysisData = item.payload;
+            renderResults(item.payload);
+            enableSaveButtons();
+            libraryModal.classList.remove("active");
+            showToast("Motion Loaded", 2000);
+          });
+          card
+            .querySelector(".delete-card-btn")
+            .addEventListener("click", (e) => {
+              e.stopPropagation();
+              if (confirm("Delete this saved motion?"))
+                deleteFromLibrary(item.id);
+            });
+          cardsContainer.appendChild(card);
+        });
+      }
+
+      // --- File System (.motion) ---
+      saveFileBtn.addEventListener("click", () => {
+        if (!lastAnalysisData) return;
+        const dataStr = JSON.stringify(lastAnalysisData, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `pendula_${Date.now()}.motion`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      loadFileBtn.addEventListener("click", () => fileUploader.click());
+      fileUploader.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            if (!data.rawPoints || !data.bestParams || data.theta === undefined)
+              throw new Error("Format");
+            lastAnalysisData = data;
+            renderResults(data);
+            enableSaveButtons();
+            fileUploader.value = "";
+            showToast("File Uploaded successfully", 2000);
+          } catch (err) {
+            alert("Invalid .motion file.");
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // --- Recording & Live Loop Logic ---
+      recordBtn.addEventListener("click", () => {
+        if (isCountingDown) {
+          clearInterval(countdownTimer);
+          isCountingDown = false;
+          resetUI();
+          resultsDiv.textContent = "Recording cancelled.";
+          hideToast();
+          return;
+        }
+        if (isRecording) {
+          stopRecordingAndAnalyze();
+          return;
+        }
+
+        replayBtn.style.display = "none";
+        saveLocalBtn.disabled = true;
+        saveFileBtn.disabled = true;
+        currentLiveParams = null;
+
+        const delayTime = parseInt(delayInput.value) || 0;
+        if (delayTime > 0) {
+          isCountingDown = true;
+          let timeLeft = delayTime;
+          recordBtn.textContent = `Cancel (${timeLeft}s)`;
+          recordBtn.classList.add("btn-counting");
+          showToast(`Position your pen... starting in ${timeLeft}`, 0);
+          resultsDiv.textContent = `Starting in ${timeLeft} seconds...`;
+
+          countdownTimer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft > 0) {
+              recordBtn.textContent = `Cancel (${timeLeft}s)`;
+              showToast(`Position your pen... starting in ${timeLeft}`, 0);
+            } else {
+              clearInterval(countdownTimer);
+              startActualRecording();
+            }
+          }, 1000);
+        } else {
+          startActualRecording();
+        }
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!isRecording) return;
+        lastMoveTime = performance.now();
+        const t = (lastMoveTime - startTime) / 1000;
+        raw2DPoints.push({ t, x: e.clientX, y: e.clientY });
+      });
+
+      function startActualRecording() {
+        isCountingDown = false;
+        isRecording = true;
+        raw2DPoints = [];
+        currentLiveParams = null;
+
+        recordBtn.textContent = "Stop & Analyze";
+        recordBtn.classList.remove("btn-counting");
+        recordBtn.classList.add("btn-recording");
+
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+
+        showToast("🔴 Recording! Let the pen roll...", 0);
+        resultsDiv.textContent = "Tracking and processing live motion...";
+
+        startTime = performance.now();
+        lastMoveTime = performance.now();
+
+        if (autoStopTimer) clearInterval(autoStopTimer);
+        autoStopTimer = setInterval(() => {
+          if (!isRecording) return;
+          if (
+            autoStopCheckbox.checked &&
+            raw2DPoints.length > 10 &&
+            performance.now() - lastMoveTime > 1500
+          ) {
+            showToast("Pen settled. Auto-stopping...", 1000);
+            stopRecordingAndAnalyze();
+          }
+        }, 500);
+
+        if (liveFitTimer) clearInterval(liveFitTimer);
+        liveFitTimer = setInterval(calculateLiveFit, 200);
+        requestAnimationFrame(liveRenderLoop);
+      }
+
+      // Background Math Worker (Simulated)
+      function calculateLiveFit() {
+        if (!isRecording || raw2DPoints.length < 20) return;
+        const duration = raw2DPoints[raw2DPoints.length - 1].t;
+        if (duration < 0.75) return;
+
+        const t0 = raw2DPoints[0].t;
+        const pts = raw2DPoints.map((p) => ({ t: p.t - t0, x: p.x, y: p.y }));
+
+        let sumX = 0,
+          sumY = 0;
+        pts.forEach((p) => {
+          sumX += p.x;
+          sumY += p.y;
+        });
+        currentLiveMeanX = sumX / pts.length;
+        currentLiveMeanY = sumY / pts.length;
+
+        let Sxx = 0,
+          Syy = 0,
+          Sxy = 0;
+        pts.forEach((p) => {
+          const dx = p.x - currentLiveMeanX,
+            dy = p.y - currentLiveMeanY;
+          Sxx += dx * dx;
+          Syy += dy * dy;
+          Sxy += dx * dy;
+        });
+        currentLiveTheta = 0.5 * Math.atan2(2 * Sxy, Sxx - Syy);
+
+        const proj = pts.map((p) => {
+          const dx = p.x - currentLiveMeanX,
+            dy = p.y - currentLiveMeanY;
+          return {
+            t: p.t,
+            d:
+              dx * Math.cos(currentLiveTheta) + dy * Math.sin(currentLiveTheta),
+          };
+        });
+
+        let maxAmp = 0;
+        proj.forEach((p) => (maxAmp = Math.max(maxAmp, Math.abs(p.d))));
+
+        let params = currentLiveParams || {
+          A: maxAmp,
+          gamma: 1.0,
+          omega: 5,
+          phi: 0,
+        };
+        let minErr = Infinity;
+
+        for (let i = 0; i < 2000; i++) {
+          const A = maxAmp * (0.5 + Math.random());
+          const gamma = Math.random() * 5;
+          const omega = Math.random() * 20;
+          const phi = Math.random() * Math.PI * 2;
+          let err = 0;
+          for (const p of proj) {
+            err += Math.pow(
+              A * Math.exp(-gamma * p.t) * Math.cos(omega * p.t + phi) - p.d,
+              2,
+            );
+          }
+          if (err < minErr) {
+            minErr = err;
+            params = { A, gamma, omega, phi };
+          }
+        }
+        for (let step = 0; step < 1000; step++) {
+          const A = params.A + (Math.random() - 0.5) * 5;
+          const gamma = Math.max(0, params.gamma + (Math.random() - 0.5) * 0.5);
+          const omega = Math.max(0, params.omega + (Math.random() - 0.5) * 2);
+          const phi = params.phi + (Math.random() - 0.5) * 0.5;
+          let err = 0;
+          for (const p of proj) {
+            err += Math.pow(
+              A * Math.exp(-gamma * p.t) * Math.cos(omega * p.t + phi) - p.d,
+              2,
+            );
+          }
+          if (err < minErr) {
+            minErr = err;
+            params = { A, gamma, omega, phi };
+          }
+        }
+
+        let ss_tot = 0;
+        let mean_d = proj.reduce((sum, p) => sum + p.d, 0) / proj.length;
+        proj.forEach((p) => (ss_tot += Math.pow(p.d - mean_d, 2)));
+        currentLiveScore = Math.max(
+          0,
+          Math.min(100, (1 - minErr / ss_tot) * 100),
+        ).toFixed(1);
+        currentLiveParams = params;
+      }
+
+      // Live Game Loop
+      function liveRenderLoop() {
+        if (!isRecording) return;
+
+        // --- 2D CANVAS RENDERING ---
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+        if (raw2DPoints.length > 1) {
+          bgCtx.lineWidth = 3;
+          bgCtx.strokeStyle = "rgba(59, 130, 246, 0.4)";
+          bgCtx.lineCap = "round";
+          bgCtx.beginPath();
+          bgCtx.moveTo(raw2DPoints[0].x, raw2DPoints[0].y);
+          for (let i = 1; i < raw2DPoints.length; i++)
+            bgCtx.lineTo(raw2DPoints[i].x, raw2DPoints[i].y);
+          bgCtx.stroke();
+        }
+
+        const currentT = (performance.now() - startTime) / 1000;
+
+        if (currentLiveParams && currentT > 0.75) {
+          const pred_d =
+            currentLiveParams.A *
+            Math.exp(-currentLiveParams.gamma * currentT) *
+            Math.cos(
+              currentLiveParams.omega * currentT + currentLiveParams.phi,
+            );
+          const idealX = currentLiveMeanX + pred_d * Math.cos(currentLiveTheta);
+          const idealY = currentLiveMeanY + pred_d * Math.sin(currentLiveTheta);
+
+          bgCtx.fillStyle = "rgba(249, 115, 22, 0.75)"; // Orange Translucent
+          bgCtx.beginPath();
+          bgCtx.arc(idealX, idealY, 8, 0, Math.PI * 2);
+          bgCtx.fill();
+        }
+
+        if (raw2DPoints.length > 0) {
+          const lastP = raw2DPoints[raw2DPoints.length - 1];
+          bgCtx.fillStyle = "rgba(59, 130, 246, 0.75)"; // Blue Translucent
+          bgCtx.beginPath();
+          bgCtx.arc(lastP.x, lastP.y, 10, 0, Math.PI * 2);
+          bgCtx.fill();
+        }
+
+        // --- 1D GRAPH CANVAS RENDERING (LIVE) ---
+        const w = graphCanvas.width;
+        const h = graphCanvas.height;
+        const centerY = h / 2;
+        graphCtx.clearRect(0, 0, w, h);
+        graphCtx.strokeStyle = getThemeVar("--grid-line");
+        graphCtx.lineWidth = 1;
+        graphCtx.beginPath();
+        graphCtx.moveTo(0, centerY);
+        graphCtx.lineTo(w, centerY);
+        graphCtx.stroke();
+
+        if (raw2DPoints.length > 1 && currentLiveTheta !== undefined) {
+          const t0 = raw2DPoints[0].t;
+          const liveData = raw2DPoints.map((p) => ({
+            t: p.t - t0,
+            d:
+              (p.x - currentLiveMeanX) * Math.cos(currentLiveTheta) +
+              (p.y - currentLiveMeanY) * Math.sin(currentLiveTheta),
+          }));
+
+          let maxAmp = 0;
+          liveData.forEach((p) => (maxAmp = Math.max(maxAmp, Math.abs(p.d))));
+          maxAmp = maxAmp || 1;
+
+          const mapX = (t) => (t / Math.max(currentT, 1)) * w;
+          const mapY = (d) => centerY - d * (h / 2.5 / maxAmp);
+
+          // Draw Blue Path
+          graphCtx.strokeStyle = "#3b82f6";
+          graphCtx.lineWidth = 2.5;
+          graphCtx.beginPath();
+          graphCtx.moveTo(mapX(liveData[0].t), mapY(liveData[0].d));
+          for (let i = 1; i < liveData.length; i++)
+            graphCtx.lineTo(mapX(liveData[i].t), mapY(liveData[i].d));
+          graphCtx.stroke();
+
+          // Draw Orange Path
+          if (currentLiveParams && currentT > 0.75) {
+            graphCtx.strokeStyle = "#f97316";
+            graphCtx.lineWidth = 2;
+            graphCtx.setLineDash([2, 4]);
+            graphCtx.beginPath();
+            for (
+              let t_step = 0;
+              t_step <= currentT;
+              t_step += Math.max(currentT / 100, 0.01)
+            ) {
+              const pred =
+                currentLiveParams.A *
+                Math.exp(-currentLiveParams.gamma * t_step) *
+                Math.cos(
+                  currentLiveParams.omega * t_step + currentLiveParams.phi,
+                );
+              if (t_step === 0) graphCtx.moveTo(mapX(t_step), mapY(pred));
+              else graphCtx.lineTo(mapX(t_step), mapY(pred));
+            }
+            graphCtx.stroke();
+            graphCtx.setLineDash([]);
+          }
+        }
+
+        requestAnimationFrame(liveRenderLoop);
+      }
+
+      function stopRecordingAndAnalyze() {
+        isRecording = false;
+        if (autoStopTimer) clearInterval(autoStopTimer);
+        if (liveFitTimer) clearInterval(liveFitTimer);
+
+        resetUI();
+        hideToast();
+        resultsDiv.textContent = "Performing final deep analysis...";
+        setTimeout(analyzeData, 50);
+      }
+
+      function resetUI() {
+        recordBtn.textContent = "Start Recording";
+        recordBtn.classList.remove("btn-recording", "btn-counting");
+      }
+
+      // --- Deep Math Engine & Anti-Cheat ---
+      function analyzeData() {
+        if (raw2DPoints.length < 10) {
+          resultsDiv.textContent =
+            "Insufficient data. Please let the pen roll longer.";
+          return;
+        }
+
+        const t0 = raw2DPoints[0].t;
+        const normalizedRawPoints = raw2DPoints.map((p) => ({
+          t: p.t - t0,
+          x: p.x,
+          y: p.y,
+        }));
+
+        let sumX = 0,
+          sumY = 0;
+        normalizedRawPoints.forEach((p) => {
+          sumX += p.x;
+          sumY += p.y;
+        });
+        const meanX = sumX / normalizedRawPoints.length;
+        const meanY = sumY / normalizedRawPoints.length;
+
+        let Sxx = 0,
+          Syy = 0,
+          Sxy = 0;
+        normalizedRawPoints.forEach((p) => {
+          const dx = p.x - meanX,
+            dy = p.y - meanY;
+          Sxx += dx * dx;
+          Syy += dy * dy;
+          Sxy += dx * dy;
+        });
+        const theta = 0.5 * Math.atan2(2 * Sxy, Sxx - Syy);
+        const angleDeg = ((theta * 180) / Math.PI).toFixed(1);
+
+        const projectedData = normalizedRawPoints.map((p) => {
+          return {
+            t: p.t,
+            d:
+              (p.x - meanX) * Math.cos(theta) + (p.y - meanY) * Math.sin(theta),
+          };
+        });
+
+        // --- ANTI-CHEAT DETECTION (PATH LENGTH RATIO) ---
+        let varMain = 0,
+          varMinor = 0;
+        let maxD = -Infinity,
+          minD = Infinity;
+        let pathLength = 0;
+
+        normalizedRawPoints.forEach((p, i) => {
+          const dx = p.x - meanX,
+            dy = p.y - meanY;
+          const dMain = dx * Math.cos(theta) + dy * Math.sin(theta);
+          const dMinor = -dx * Math.sin(theta) + dy * Math.cos(theta);
+          varMain += dMain * dMain;
+          varMinor += dMinor * dMinor;
+
+          const d = projectedData[i].d;
+          if (d > maxD) maxD = d;
+          if (d < minD) minD = d;
+          if (i > 0) pathLength += Math.abs(d - projectedData[i - 1].d);
+        });
+
+        const spread = maxD - minD;
+        let cheatDetected = null;
+        if (varMinor / varMain > 0.15)
+          cheatDetected = "2D"; // Spiral / Fig 8
+        else if (pathLength < spread * 1.8) cheatDetected = "LINE"; // Straight line swipe
+        // ----------------------------
+
+        let maxAmp = 0;
+        projectedData.forEach(
+          (p) => (maxAmp = Math.max(maxAmp, Math.abs(p.d))),
+        );
+        const duration = projectedData[projectedData.length - 1].t;
+
+        let bestParams = { A: maxAmp, gamma: 1.0, omega: 5, phi: 0 };
+        let minError = Infinity;
+
+        for (let i = 0; i < 40000; i++) {
+          const A = maxAmp * (0.5 + Math.random());
+          const gamma = Math.random() * 5;
+          const omega = Math.random() * 20;
+          const phi = Math.random() * Math.PI * 2;
+          let err = 0;
+          for (const p of projectedData) {
+            err += Math.pow(
+              A * Math.exp(-gamma * p.t) * Math.cos(omega * p.t + phi) - p.d,
+              2,
+            );
+          }
+          if (err < minError) {
+            minError = err;
+            bestParams = { A, gamma, omega, phi };
+          }
+        }
+        for (let step = 0; step < 15000; step++) {
+          const A = bestParams.A + (Math.random() - 0.5) * 5;
+          const gamma = Math.max(
+            0,
+            bestParams.gamma + (Math.random() - 0.5) * 0.2,
+          );
+          const omega = Math.max(
+            0,
+            bestParams.omega + (Math.random() - 0.5) * 1,
+          );
+          const phi = bestParams.phi + (Math.random() - 0.5) * 0.2;
+          let err = 0;
+          for (const p of projectedData) {
+            err += Math.pow(
+              A * Math.exp(-gamma * p.t) * Math.cos(omega * p.t + phi) - p.d,
+              2,
+            );
+          }
+          if (err < minError) {
+            minError = err;
+            bestParams = { A, gamma, omega, phi };
+          }
+        }
+
+        let ss_tot = 0;
+        let mean_d =
+          projectedData.reduce((sum, p) => sum + p.d, 0) / projectedData.length;
+        projectedData.forEach((p) => (ss_tot += Math.pow(p.d - mean_d, 2)));
+        let similarityScore = Math.max(
+          0,
+          Math.min(100, (1 - minError / ss_tot) * 100),
+        ).toFixed(1);
+
+        lastAnalysisData = {
+          rawPoints: normalizedRawPoints,
+          bestParams,
+          theta,
+          meanX,
+          meanY,
+          duration,
+          angleDeg,
+          similarityScore,
+          liveParams: currentLiveParams,
+          liveScore: currentLiveScore,
+          liveTheta: currentLiveTheta,
+          cheatDetected,
+        };
+
+        renderResults(lastAnalysisData);
+        enableSaveButtons();
+      }
+
+      // --- Render Engine ---
+      function renderResults(data) {
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+        bgCtx.lineWidth = 3;
+        bgCtx.strokeStyle = "rgba(59, 130, 246, 0.4)";
+        bgCtx.lineCap = "round";
+        bgCtx.beginPath();
+        bgCtx.moveTo(data.rawPoints[0].x, data.rawPoints[0].y);
+        for (let i = 1; i < data.rawPoints.length; i++)
+          bgCtx.lineTo(data.rawPoints[i].x, data.rawPoints[i].y);
+        bgCtx.stroke();
+
+        drawStaticAxis(data.theta, data.meanX, data.meanY);
+
+        const projectedData = data.rawPoints.map((p) => {
+          return {
+            t: p.t,
+            d:
+              (p.x - data.meanX) * Math.cos(data.theta) +
+              (p.y - data.meanY) * Math.sin(data.theta),
+          };
+        });
+        let maxAmp = 0;
+        projectedData.forEach(
+          (p) => (maxAmp = Math.max(maxAmp, Math.abs(p.d))),
+        );
+
+        drawMultiGraph(projectedData, data, maxAmp);
+        replayBtn.style.display = "block";
+
+        if (data.cheatDetected) {
+          const msg =
+            data.cheatDetected === "2D"
+              ? "That looks like a Spiral or a Figure-8! True pendulums swing in a straight 1D line."
+              : "That is just a straight swipe! Real pendulums actually oscillate back and forth.";
+
+          resultsDiv.innerHTML = `
+                    <div class="cheat-alert">🚨 Caught you, cheater!</div>
+                    <div style="margin-bottom: 10px;">${msg}</div>
+                    <b>Engine Fooled Score:</b> <span style="text-decoration: line-through; opacity: 0.5;">${data.similarityScore}%</span> <b>0%</b>
+                `;
+        } else {
+          resultsDiv.innerHTML = `
+<b>Live Predict Score:</b> <span class="score-orange">${data.liveScore || "N/A"}%</span>
+<b>Final Model Score:</b> <span class="score-highlight">${data.similarityScore}%</span>
+
+<b>Final Parameters:</b>
+A (Amp):   ${data.bestParams.A.toFixed(2)} px
+γ (Damp):  ${data.bestParams.gamma.toFixed(3)} s⁻¹
+ω (Freq):  ${data.bestParams.omega.toFixed(3)} rad/s (${(data.bestParams.omega / (2 * Math.PI)).toFixed(2)} Hz)
+Angle:     ${data.angleDeg}°`.trim();
+        }
+      }
+
+      function drawStaticAxis(theta, meanX, meanY) {
+        const axisLen = Math.max(window.innerWidth, window.innerHeight);
+        bgCtx.strokeStyle = "rgba(239, 68, 68, 0.3)";
+        bgCtx.lineWidth = 2;
+        bgCtx.setLineDash([8, 8]);
+        bgCtx.beginPath();
+        bgCtx.moveTo(
+          meanX - Math.cos(theta) * axisLen,
+          meanY - Math.sin(theta) * axisLen,
+        );
+        bgCtx.lineTo(
+          meanX + Math.cos(theta) * axisLen,
+          meanY + Math.sin(theta) * axisLen,
+        );
+        bgCtx.stroke();
+        bgCtx.setLineDash([]);
+      }
+
+      function drawMultiGraph(projData, data, maxAmp) {
+        const w = graphCanvas.width;
+        const h = graphCanvas.height;
+        const centerY = h / 2;
+        const duration = data.duration;
+        const bestParams = data.bestParams;
+        const liveParams = data.liveParams;
+
+        graphCtx.clearRect(0, 0, w, h);
+        graphCtx.strokeStyle = getThemeVar("--grid-line");
+        graphCtx.lineWidth = 1;
+        graphCtx.beginPath();
+        graphCtx.moveTo(0, centerY);
+        graphCtx.lineTo(w, centerY);
+        graphCtx.stroke();
+
+        const mapX = (t) => (t / duration) * w;
+        const mapY = (d) => centerY - d * (h / 2.5 / maxAmp);
+
+        // 1. Live Fit (Orange, Dotted)
+        if (liveParams) {
+          let sign = 1;
+          if (data.liveTheta !== undefined) {
+            if (Math.cos(data.theta - data.liveTheta) < 0) sign = -1;
+          }
+
+          graphCtx.strokeStyle = "#f97316";
+          graphCtx.lineWidth = 2;
+          graphCtx.setLineDash([2, 4]);
+          graphCtx.beginPath();
+          for (let t = 0; t <= duration; t += duration / 200) {
+            const pred =
+              sign *
+              liveParams.A *
+              Math.exp(-liveParams.gamma * t) *
+              Math.cos(liveParams.omega * t + liveParams.phi);
+            if (t === 0) graphCtx.moveTo(mapX(t), mapY(pred));
+            else graphCtx.lineTo(mapX(t), mapY(pred));
+          }
+          graphCtx.stroke();
+          graphCtx.setLineDash([]);
+        }
+
+        // 2. Final Fit (Red, Dashed)
+        graphCtx.strokeStyle = "#ef4444";
+        graphCtx.lineWidth = 2;
+        graphCtx.setLineDash([6, 6]);
+        graphCtx.beginPath();
+        for (let t = 0; t <= duration; t += duration / 200) {
+          const pred =
+            bestParams.A *
+            Math.exp(-bestParams.gamma * t) *
+            Math.cos(bestParams.omega * t + bestParams.phi);
+          if (t === 0) graphCtx.moveTo(mapX(t), mapY(pred));
+          else graphCtx.lineTo(mapX(t), mapY(pred));
+        }
+        graphCtx.stroke();
+        graphCtx.setLineDash([]);
+
+        // 3. Actual Data (Blue, Solid)
+        graphCtx.strokeStyle = "#3b82f6";
+        graphCtx.lineWidth = 2.5;
+        graphCtx.beginPath();
+        graphCtx.moveTo(mapX(projData[0].t), mapY(projData[0].d));
+        for (let i = 1; i < projData.length; i++)
+          graphCtx.lineTo(mapX(projData[i].t), mapY(projData[i].d));
+        graphCtx.stroke();
+      }
+
+      // --- Replay Engine ---
+      let replayStartTime = 0;
+      replayBtn.addEventListener("click", () => {
+        if (!lastAnalysisData || isReplaying) return;
+        isReplaying = true;
+        recordBtn.disabled = true;
+        replayBtn.disabled = true;
+        replayBtn.textContent = "Playing...";
+        replayStartTime = performance.now();
+        requestAnimationFrame(replayLoop);
+      });
+
+      function replayLoop() {
+        if (!isReplaying) return;
+        const t = (performance.now() - replayStartTime) / 1000;
+        const data = lastAnalysisData;
+
+        if (t >= data.duration) {
+          drawReplayFrame(data.duration);
+          isReplaying = false;
+          recordBtn.disabled = false;
+          replayBtn.disabled = false;
+          replayBtn.textContent = "▶ Replay Motion";
+          return;
+        }
+        drawReplayFrame(t);
+        requestAnimationFrame(replayLoop);
+      }
+
+      function drawReplayFrame(t) {
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        const {
+          rawPoints,
+          bestParams,
+          liveParams,
+          liveTheta,
+          theta,
+          meanX,
+          meanY,
+        } = lastAnalysisData;
+        drawStaticAxis(theta, meanX, meanY);
+
+        let actualX = rawPoints[0].x,
+          actualY = rawPoints[0].y;
+        for (let i = 0; i < rawPoints.length - 1; i++) {
+          if (t >= rawPoints[i].t && t <= rawPoints[i + 1].t) {
+            let f =
+              (t - rawPoints[i].t) / (rawPoints[i + 1].t - rawPoints[i].t);
+            actualX =
+              rawPoints[i].x + f * (rawPoints[i + 1].x - rawPoints[i].x);
+            actualY =
+              rawPoints[i].y + f * (rawPoints[i + 1].y - rawPoints[i].y);
+            break;
+          }
+        }
+
+        const pred_d =
+          bestParams.A *
+          Math.exp(-bestParams.gamma * t) *
+          Math.cos(bestParams.omega * t + bestParams.phi);
+        const idealX = meanX + pred_d * Math.cos(theta);
+        const idealY = meanY + pred_d * Math.sin(theta);
+
+        let liveX = null,
+          liveY = null;
+        if (liveParams && t > 0.75) {
+          const live_d =
+            liveParams.A *
+            Math.exp(-liveParams.gamma * t) *
+            Math.cos(liveParams.omega * t + liveParams.phi);
+          const useTheta = liveTheta !== undefined ? liveTheta : theta;
+          liveX = meanX + live_d * Math.cos(useTheta);
+          liveY = meanY + live_d * Math.sin(useTheta);
+        }
+
+        bgCtx.lineWidth = 3;
+        bgCtx.strokeStyle = "rgba(59, 130, 246, 0.4)";
+        bgCtx.beginPath();
+        bgCtx.moveTo(rawPoints[0].x, rawPoints[0].y);
+        for (let i = 1; i < rawPoints.length; i++) {
+          if (rawPoints[i].t <= t) bgCtx.lineTo(rawPoints[i].x, rawPoints[i].y);
+          else {
+            bgCtx.lineTo(actualX, actualY);
+            break;
+          }
+        }
+        bgCtx.stroke();
+
+        bgCtx.lineWidth = 3;
+        bgCtx.strokeStyle = "rgba(239, 68, 68, 0.4)";
+        bgCtx.beginPath();
+        let start_d = bestParams.A * Math.exp(0) * Math.cos(bestParams.phi);
+        bgCtx.moveTo(
+          meanX + start_d * Math.cos(theta),
+          meanY + start_d * Math.sin(theta),
+        );
+        for (let step_t = 0.05; step_t <= t; step_t += 0.05) {
+          let d =
+            bestParams.A *
+            Math.exp(-bestParams.gamma * step_t) *
+            Math.cos(bestParams.omega * step_t + bestParams.phi);
+          bgCtx.lineTo(
+            meanX + d * Math.cos(theta),
+            meanY + d * Math.sin(theta),
+          );
+        }
+        bgCtx.lineTo(idealX, idealY);
+        bgCtx.stroke();
+
+        if (liveX) {
+          bgCtx.fillStyle = "rgba(249, 115, 22, 0.75)";
+          bgCtx.beginPath();
+          bgCtx.arc(liveX, liveY, 8, 0, Math.PI * 2);
+          bgCtx.fill();
+        }
+        bgCtx.fillStyle = "rgba(59, 130, 246, 0.75)";
+        bgCtx.beginPath();
+        bgCtx.arc(actualX, actualY, 10, 0, Math.PI * 2);
+        bgCtx.fill();
+        bgCtx.fillStyle = "rgba(239, 68, 68, 0.75)";
+        bgCtx.beginPath();
+        bgCtx.arc(idealX, idealY, 8, 0, Math.PI * 2);
+        bgCtx.fill();
+      }
+    </script>
+  </body>
+</html>
