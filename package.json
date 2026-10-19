@@ -1,0 +1,28 @@
+{
+  "name": "pendula",
+  "version": "1.0.0",
+  "description": "Real-time physics visualizer tracking 2D cursor motion and applying simulated annealing to fit live data against Damped Simple Harmonic Motion (SHM).",
+  "keywords": [
+    "pendula",
+    "physics",
+    "simulation",
+    "simple-harmonic-motion",
+    "damped-shm",
+    "simulated-annealing",
+    "motion-tracking",
+    "canvas-api",
+    "physics-visualization",
+    "stem",
+    "stylus-tracking"
+  ],
+  "author": "Aayush Shah (https://github.com/shahaayush265)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shahaayush265/pendula.git"
+  },
+  "homepage": "https://shahaayush265.github.io/pendula/",
+  "bugs": {
+    "url": "https://github.com/shahaayush265/pendula/issues"
+  }
+}
